@@ -1,0 +1,4 @@
+torch==2.5.1
+numpy==1.26.4
+einops==0.8.1
+nystrom-attention==0.0.12

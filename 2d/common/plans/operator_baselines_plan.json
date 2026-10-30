@@ -1,0 +1,202 @@
+{
+  "target_parameters": 34700000,
+  "matching_tolerance_fraction": 0.001,
+  "order": [
+    "LNO",
+    "Transolver",
+    "ONO"
+  ],
+  "serial_training": true,
+  "counting_policy": "Trainable real weights and biases only; coordinates and running statistics excluded. All four selected models have real-valued parameters.",
+  "settings": {
+    "updates": 1000,
+    "effective_batch_size": 25,
+    "microbatch_size": 5,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "gradient_clip": 1.0,
+    "optimizer": "AdamW",
+    "schedule": "cosine decay to zero over 1000 updates",
+    "seed": 0,
+    "batch_seed": 0,
+    "ntrain": 1000,
+    "ntest": 100,
+    "loss": "MSE",
+    "checkpoint_selection": "final update; test used only after training",
+    "input_normalization": "power / training-set maximum",
+    "output_normalization": "none"
+  },
+  "models": {
+    "LNO": {
+      "config": {
+        "n_block": 4,
+        "n_mode": 256,
+        "n_dim": 880,
+        "n_head": 8,
+        "n_layer": 2,
+        "x_dim": 2,
+        "y1_dim": 1,
+        "y2_dim": 1,
+        "attn": "Attention_Vanilla",
+        "act": "GELU",
+        "model_attr": {
+          "time": false
+        },
+        "ff_hidden": 1809
+      },
+      "trainable_parameters": 34698853,
+      "deviation_percent": -0.003305475504322697,
+      "dimension_selection": "Parameter arithmetic only; no target/test accuracy inspected."
+    },
+    "Transolver": {
+      "config": {
+        "space_dim": 2,
+        "n_layers": 8,
+        "n_hidden": 448,
+        "n_head": 8,
+        "mlp_ratio": 1,
+        "fun_dim": 1,
+        "out_dim": 1,
+        "slice_num": 32,
+        "H": 64,
+        "W": 64,
+        "Time_Input": false,
+        "unified_pos": false,
+        "ff_hidden": 511
+      },
+      "trainable_parameters": 34699321,
+      "deviation_percent": -0.0019567723342994725,
+      "dimension_selection": "Parameter arithmetic only; no target/test accuracy inspected."
+    },
+    "ONO": {
+      "config": {
+        "space_dim": 2,
+        "n_layers": 10,
+        "n_hidden": 528,
+        "n_head": 8,
+        "mlp_ratio": 2,
+        "fun_dim": 1,
+        "out_dim": 1,
+        "orth": true,
+        "psi_dim": 32,
+        "momentum": 0.9,
+        "attn_type": "nystrom",
+        "Time_Input": false,
+        "ff_hidden": 1106
+      },
+      "trainable_parameters": 34703335,
+      "deviation_percent": 0.009610951008642843,
+      "dimension_selection": "Parameter arithmetic only; no target/test accuracy inspected."
+    }
+  },
+  "sources": {
+    "lno": {
+      "repository": "https://github.com/L-I-M-I-T/LatentNeuralOperator",
+      "commit": "771a874086b84133f70b6173f92230db0ad95b78",
+      "ref": "771a874086b84133f70b6173f92230db0ad95b78",
+      "files": {
+        "lno.py": {
+          "path": "LNO-PyTorch/ForwardProblem/module/model.py",
+          "url": "https://raw.githubusercontent.com/L-I-M-I-T/LatentNeuralOperator/771a874086b84133f70b6173f92230db0ad95b78/LNO-PyTorch/ForwardProblem/module/model.py",
+          "sha256": "0683485a8789b1bf2d29daf981861c0eeb7409712106dd6428ec13da5cf9591a",
+          "bytes": 17623
+        },
+        "lno_darcy.sh": {
+          "path": "LNO-PyTorch/ForwardProblem/scripts/LNO_Darcy.sh",
+          "url": "https://raw.githubusercontent.com/L-I-M-I-T/LatentNeuralOperator/771a874086b84133f70b6173f92230db0ad95b78/LNO-PyTorch/ForwardProblem/scripts/LNO_Darcy.sh",
+          "sha256": "3bb2e4a19428c946ffd4a4230cbe544cc7c0792b2ae982100312f934d525d376",
+          "bytes": 223
+        },
+        "lno_darcy_config.jsonc": {
+          "path": "LNO-PyTorch/ForwardProblem/configs/LNO_Darcy.jsonc",
+          "url": "https://raw.githubusercontent.com/L-I-M-I-T/LatentNeuralOperator/771a874086b84133f70b6173f92230db0ad95b78/LNO-PyTorch/ForwardProblem/configs/LNO_Darcy.jsonc",
+          "sha256": "36ec687a47495321f8dd930612bb06984075ef1ec277b4e91280f34e2cc4ebf2",
+          "bytes": 808
+        }
+      }
+    },
+    "transolver": {
+      "repository": "https://github.com/thuml/Transolver",
+      "commit": "75e0f67643806a81cd1d3f6adc88dd8c02416fe7",
+      "ref": "75e0f67643806a81cd1d3f6adc88dd8c02416fe7",
+      "files": {
+        "transolver.py": {
+          "path": "PDE-Solving-StandardBenchmark/model/Transolver_Structured_Mesh_2D.py",
+          "url": "https://raw.githubusercontent.com/thuml/Transolver/75e0f67643806a81cd1d3f6adc88dd8c02416fe7/PDE-Solving-StandardBenchmark/model/Transolver_Structured_Mesh_2D.py",
+          "sha256": "d4b0db8a52c26ba6433f45a232947b380dfbaa4a31eac413a5e03fbef151acfc",
+          "bytes": 6828
+        },
+        "physics_attention.py": {
+          "path": "PDE-Solving-StandardBenchmark/model/Physics_Attention.py",
+          "url": "https://raw.githubusercontent.com/thuml/Transolver/75e0f67643806a81cd1d3f6adc88dd8c02416fe7/PDE-Solving-StandardBenchmark/model/Physics_Attention.py",
+          "sha256": "4fc710f6f96788fb59cb19fab8d64873d3d16e9e182f12a544d451c74c548cc7",
+          "bytes": 7989
+        },
+        "embedding.py": {
+          "path": "PDE-Solving-StandardBenchmark/model/Embedding.py",
+          "url": "https://raw.githubusercontent.com/thuml/Transolver/75e0f67643806a81cd1d3f6adc88dd8c02416fe7/PDE-Solving-StandardBenchmark/model/Embedding.py",
+          "sha256": "1371e3c234d2d29be783ee817ecc7e65e8e0b36024b95b6c3c256b2054a9720d",
+          "bytes": 2938
+        }
+      }
+    },
+    "ono": {
+      "repository": "https://github.com/SJTU-DENG-Lab/Orthogonal-Neural-operator",
+      "commit": "c9bc85dcd3630ffcb9822acc455a551cae76d662",
+      "ref": "c9bc85dcd3630ffcb9822acc455a551cae76d662",
+      "files": {
+        "ono.py": {
+          "path": "ONOmodel2.py",
+          "url": "https://raw.githubusercontent.com/SJTU-DENG-Lab/Orthogonal-Neural-operator/c9bc85dcd3630ffcb9822acc455a551cae76d662/ONOmodel2.py",
+          "sha256": "267556ffc0212c2da670420a9f1806859ec7984f7986e449daf69dfeb48185f5",
+          "bytes": 24804
+        },
+        "ono_darcy.py": {
+          "path": "Darcy_example.py",
+          "url": "https://raw.githubusercontent.com/SJTU-DENG-Lab/Orthogonal-Neural-operator/c9bc85dcd3630ffcb9822acc455a551cae76d662/Darcy_example.py",
+          "sha256": "d1fee471b051ec6255108cbedd15adf1fad2baae4ec8272f3bb1fe491ac06543",
+          "bytes": 12424
+        }
+      }
+    }
+  },
+  "data": {
+    "f_train": {
+      "path": "/REPLACE/ME/f_train.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "u_train": {
+      "path": "/REPLACE/ME/u_train.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "f_test": {
+      "path": "/REPLACE/ME/f_test.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "u_test": {
+      "path": "/REPLACE/ME/u_test.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    }
+  },
+  "resource_policy": {
+    "sample_interval_seconds": 1.0,
+    "telemetry_max_age_seconds": 4.0,
+    "windows_start_max_commit_fraction": 0.75,
+    "windows_stop_max_commit_fraction": 0.85,
+    "windows_start_min_commit_free_bytes": 17179869184,
+    "windows_stop_min_commit_free_bytes": 8589934592,
+    "windows_start_min_physical_free_bytes": 6442450944,
+    "windows_stop_min_physical_free_bytes": 4294967296,
+    "linux_start_min_available_bytes": 6442450944,
+    "linux_stop_min_available_bytes": 4294967296,
+    "gpu_start_min_free_bytes": 6442450944,
+    "gpu_stop_min_free_bytes": 1073741824,
+    "worker_memory_high_bytes": 7516192768,
+    "worker_memory_max_bytes": 8589934592,
+    "worker_swap_max_bytes": 1073741824,
+    "worker_tasks_max": 256,
+    "torch_allocator_fraction": 0.95,
+    "worker_timeout_seconds": 1800.0
+  },
+  "batch_indices_sha256": "efaab4f8e8724464ba938d5f29bd3ae367080e4644cec3de01c1df8ff3c6935e"
+}

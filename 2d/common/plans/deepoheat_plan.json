@@ -1,0 +1,138 @@
+{
+  "target_parameters": 34700000,
+  "matching_tolerance_fraction": 0.001,
+  "order": [
+    "DeepOHeat"
+  ],
+  "serial_training": true,
+  "counting_policy": "Trainable real weights and biases only; fixed coordinates/Fourier matrix excluded.",
+  "settings": {
+    "updates": 1000,
+    "effective_batch_size": 25,
+    "microbatch_size": 5,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "gradient_clip": 1.0,
+    "optimizer": "AdamW",
+    "schedule": "cosine decay to zero over 1000 updates",
+    "seed": 0,
+    "batch_seed": 0,
+    "ntrain": 1000,
+    "ntest": 100,
+    "loss": "MSE",
+    "checkpoint_selection": "final update; test used only after training",
+    "input_normalization": "power / training-set maximum",
+    "output_normalization": "none"
+  },
+  "resource_policy": {
+    "sample_interval_seconds": 1.0,
+    "telemetry_max_age_seconds": 4.0,
+    "windows_start_max_commit_fraction": 0.75,
+    "windows_stop_max_commit_fraction": 0.85,
+    "windows_start_min_commit_free_bytes": 17179869184,
+    "windows_stop_min_commit_free_bytes": 8589934592,
+    "windows_start_min_physical_free_bytes": 6442450944,
+    "windows_stop_min_physical_free_bytes": 4294967296,
+    "linux_start_min_available_bytes": 6442450944,
+    "linux_stop_min_available_bytes": 4294967296,
+    "gpu_start_min_free_bytes": 6442450944,
+    "gpu_stop_min_free_bytes": 1073741824,
+    "worker_memory_high_bytes": 7516192768,
+    "worker_memory_max_bytes": 8589934592,
+    "worker_swap_max_bytes": 1073741824,
+    "worker_tasks_max": 256,
+    "torch_allocator_fraction": 0.95,
+    "worker_timeout_seconds": 1800.0
+  },
+  "data": {
+    "f_train": {
+      "path": "/REPLACE/ME/f_train.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "u_train": {
+      "path": "/REPLACE/ME/u_train.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "f_test": {
+      "path": "/REPLACE/ME/f_test.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    },
+    "u_test": {
+      "path": "/REPLACE/ME/u_test.npy",
+      "sha256": "RECOMPUTE_SHA256"
+    }
+  },
+  "batch_indices_sha256": "efaab4f8e8724464ba938d5f29bd3ae367080e4644cec3de01c1df8ff3c6935e",
+  "reference_plan_sha256": "71dfa698e28c96be2300fa9ac78917e222a5d1febc35bee2db880b71b13e43df",
+  "sources": {
+    "repository": "https://github.com/Cadence-Celsius/DeepOHeat",
+    "commit": "46ccfe3fd43d99765e427480e7b6e0e16c3dbc70",
+    "files": {
+      "modules.py": {
+        "path": "src/modules.py",
+        "url": "https://raw.githubusercontent.com/Cadence-Celsius/DeepOHeat/46ccfe3fd43d99765e427480e7b6e0e16c3dbc70/src/modules.py",
+        "sha256": "d98238cd25bdf62731641eea618126932435c0185d83fd979717ab34ea360662",
+        "bytes": 19621
+      },
+      "prototype.py": {
+        "path": "DeepOHeat/2d_power_map/prototype.py",
+        "url": "https://raw.githubusercontent.com/Cadence-Celsius/DeepOHeat/46ccfe3fd43d99765e427480e7b6e0e16c3dbc70/DeepOHeat/2d_power_map/prototype.py",
+        "sha256": "36ce52a41b8fb8d238a462771c6c620fdb362bec351afa9c26518c7a9c700829",
+        "bytes": 4215
+      },
+      "LICENSE": {
+        "path": "LICENSE",
+        "url": "https://raw.githubusercontent.com/Cadence-Celsius/DeepOHeat/46ccfe3fd43d99765e427480e7b6e0e16c3dbc70/LICENSE",
+        "sha256": "11995b577eacfe082a730271d45ec727a9f0ba4dd3361f8f19d4528e73456167",
+        "bytes": 1085
+      }
+    },
+    "example_execution": "prototype.py archived as provenance only; never executed"
+  },
+  "models": {
+    "DeepOHeat": {
+      "config": {
+        "size": 64,
+        "branch_layers": [
+          4096,
+          2167,
+          2167,
+          2167,
+          2167,
+          2167,
+          2167,
+          50
+        ],
+        "trunk_layers": [
+          50,
+          657,
+          657,
+          657,
+          657,
+          657,
+          653,
+          50
+        ],
+        "fourier_frequencies": 25,
+        "fourier_std": 1.0,
+        "fourier_frequency_scale": "2*pi",
+        "activation": "silu"
+      },
+      "trainable_parameters": 34701985,
+      "parameter_allocation": {
+        "branch": 32476879,
+        "joint_trunk": 2225105,
+        "output_bias": 1,
+        "total": 34701985
+      },
+      "fixed_buffer_elements": {
+        "fourier_features": 50,
+        "coordinates": 8192
+      },
+      "branch_fraction": 0.9358795757649022,
+      "dimension_selection": "Agreed analytic budget; no training/test accuracy used.",
+      "adaptation": "Supervised 2D steady source-to-temperature mapping; one joint (x,y) trunk with Fourier encoding; not the original 3D physics-informed experiment.",
+      "frequency_note": "Fixed Gaussian matrix scaled by 2*pi, std=1. No disconnected frequency scalar is registered as trainable."
+    }
+  }
+}
