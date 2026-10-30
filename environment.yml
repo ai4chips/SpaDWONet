@@ -1,0 +1,13 @@
+name: spadwonet
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - scipy
+  - matplotlib
+  - pip
+  - pip:
+      - jax[cuda12]
+      - equinox
+      - optax
