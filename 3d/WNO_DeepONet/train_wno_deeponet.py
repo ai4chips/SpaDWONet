@@ -1,0 +1,190 @@
+
+
+
+
+
+
+
+
+
+import sys, os, time, argparse
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+import jax, jax.numpy as jnp, numpy as np, optax, equinox as eqx
+
+class Tee:
+    def __init__(self, fname, mode='w'):
+        self.file = open(fname, mode)
+        self.stdout = sys.stdout
+    def write(self, data):
+        self.file.write(data)
+        self.stdout.write(data)
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
+    def close(self):
+        self.file.close()
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _this_dir)
+from model_wno_deeponet import WNOSeparableDeepONet3d, count_params
+
+
+
+ntrain = 500
+ntest = 100
+batch_size = 25
+learning_rate = 0.001
+epochs = 2000
+weight_decay = 1e-4
+
+width, level = 64, 4
+trunk_layers = [50, 50, 50, 50, 50, 50, 50]
+R = 50
+nx, ny, nz = 64, 64, 48
+
+T_amb, delta_T, f_scale = 298.15, 100.0, 0.03
+
+data_dir = os.path.join(_this_dir, '..', '..', 'data', '3d')
+base_save_path = os.path.join(_this_dir, 'results')
+
+
+
+def rel_l2_norm(pred, true):
+    return jnp.linalg.norm((pred - true).ravel()) / jnp.linalg.norm(true.ravel())
+
+
+def train(num_param_levels=1, num_wavelet_layers=10, suffix='baseline', data_subdir=""):
+    device = 'GPU' if jax.default_backend() == 'gpu' else jax.default_backend().upper()
+    print(f'JAX backend: {device}')
+
+    save_path = os.path.join(base_save_path, suffix)
+    os.makedirs(save_path, exist_ok=True)
+    tee = Tee(os.path.join(save_path, 'run_log.txt'), 'w')
+    sys.stdout = tee
+    _data_dir = os.path.join(data_dir, data_subdir) if data_subdir else data_dir
+
+    print('Loading data...')
+    s_all = jnp.array(np.load(os.path.join(_data_dir, 'f_train.npy')), dtype=jnp.float64)
+    u_all = jnp.array(np.load(os.path.join(_data_dir, 'u_train.npy')), dtype=jnp.float64)
+    s_test = jnp.array(np.load(os.path.join(_data_dir, 'f_test.npy')), dtype=jnp.float64)
+    u_test = jnp.array(np.load(os.path.join(_data_dir, 'u_test.npy')), dtype=jnp.float64)
+
+    s_train, u_train = s_all[:ntrain], u_all[:ntrain]
+    s_train, s_test = s_train / f_scale, s_test / f_scale
+    u_train, u_test = (u_train - T_amb) / delta_T, (u_test - T_amb) / delta_T
+
+    print(f'Train: {ntrain}, Test: {ntest}, Grid: {nx}x{ny}x{nz}, Batch: {batch_size}')
+    print(f'k={num_param_levels}, L={num_wavelet_layers}, Level={level}, Width={width}, Trunk p={trunk_layers[-1]}, R={R}')
+
+    print('Creating model...')
+    key = jax.random.PRNGKey(0)
+    model = WNOSeparableDeepONet3d(trunk_layers=trunk_layers, R=R, nx=nx, ny=ny, nz=nz,
+                                   width=width, level=level,
+                                   num_param_levels=num_param_levels, num_wavelet_layers=num_wavelet_layers, key=key)
+    n_params = count_params(model)
+    print(f'Parameters: {n_params:,}')
+
+    schedule = optax.cosine_decay_schedule(learning_rate, epochs, 0.0)
+    optim = optax.chain(
+        optax.clip_by_global_norm(1.0),
+        optax.adamw(learning_rate=schedule, weight_decay=weight_decay),
+    )
+    opt_state = optim.init(eqx.filter(model, eqx.is_array))
+
+    @eqx.filter_jit
+    def train_step(model, opt_state, src, tgt):
+        loss_val, grads = eqx.filter_value_and_grad(
+            lambda m: jnp.mean((m(src) - tgt) ** 2))(model)
+        updates, opt_state = optim.update(grads, opt_state, model)
+        model = eqx.apply_updates(model, updates)
+        return model, opt_state, loss_val
+
+    @eqx.filter_jit
+    def eval_batch(model, src, tgt):
+        return model(src)
+
+    def eval_all(model, src_all, tgt_all, eb=5):
+        preds = []
+        for start in range(0, src_all.shape[0], eb):
+            end = min(start + eb, src_all.shape[0])
+            preds.append(np.array(eval_batch(model, src_all[start:end], tgt_all[start:end])))
+        pred_all = jnp.concatenate(preds, axis=0)
+        pr = pred_all * delta_T + T_amb
+        tr = tgt_all * delta_T + T_amb
+        d = pr - tr
+        return jnp.mean(d**2), rel_l2_norm(pr, tr), pr, jnp.mean(jnp.abs(d)), jnp.max(jnp.abs(d))
+
+    train_loss_log = np.zeros(epochs, dtype=np.float64)
+    test_rel_l2_log = np.zeros(epochs, dtype=np.float64)
+    test_mae_log = np.zeros(epochs, dtype=np.float64)
+    test_max_log = np.zeros(epochs, dtype=np.float64)
+    total_time = 0.0
+    log_every = max(1, epochs // 100)
+
+    print(f'\n{"="*60}')
+    print(f'Training ({epochs} epochs)...')
+    print(f'{"="*60}\n')
+
+    for ep in range(epochs):
+        t1 = time.perf_counter()
+        idx = np.random.choice(ntrain, batch_size, replace=False)
+        model, opt_state, loss_val = train_step(model, opt_state, s_train[idx], u_train[idx])
+
+        if ep % log_every == 0 or ep == epochs - 1:
+            _, test_rel, _, test_mae, test_max_abs = eval_all(model, s_test, u_test)
+            trv, tmv, txv = test_rel.item(), test_mae.item(), test_max_abs.item()
+        else:
+            trv = test_rel_l2_log[max(0, ep - 1)] if ep > 0 else 1.0
+            tmv = test_mae_log[max(0, ep - 1)] if ep > 0 else 0.0
+            txv = test_max_log[max(0, ep - 1)] if ep > 0 else 0.0
+
+        t2 = time.perf_counter()
+        total_time += (t2 - t1)
+        train_loss_log[ep] = loss_val.item()
+        test_rel_l2_log[ep] = trv; test_mae_log[ep] = tmv; test_max_log[ep] = txv
+
+        if ep % log_every == 0:
+            print(f'Iter {ep:5d} | Time {t2-t1:.2f}s | '
+                  f'Train MSE {loss_val.item():.6f} | '
+                  f'Test Rel.L2 {trv:.6f} MAE {tmv:.4f}K MaxAbs {txv:.4f}K')
+
+    print(f'\n{"="*60}')
+    print(f'Training complete. Total time: {total_time:.1f}s')
+    print(f'Final Test Rel.L2: {test_rel_l2_log[-1]:.6f} ({100*test_rel_l2_log[-1]:.4f}%)')
+    print(f'Final MAE: {test_mae_log[-1]:.4f}K  MaxAbs: {test_max_log[-1]:.4f}K')
+    print(f'{"="*60}\n')
+
+    print('Computing per-sample test error...')
+    _, _, pred_all, test_mae, test_max_abs = eval_all(model, s_test, u_test)
+    pred_np = np.array(pred_all)
+    u_test_raw = np.array(np.load(os.path.join(_data_dir, 'u_test.npy')))
+
+    sample_errors = np.zeros(ntest, dtype=np.float64)
+    for i in range(ntest):
+        sample_errors[i] = rel_l2_norm(jnp.array(pred_np[i]), jnp.array(u_test_raw[i])).item()
+
+    print(f'Mean Testing Error: {100*sample_errors.mean():.4f}%')
+    print(f'MAE: {test_mae.item():.4f}K  MaxAbs: {test_max_abs.item():.4f}K')
+    print(f'Total Time: {total_time:.1f}s  Params: {n_params:,}')
+
+
+    eqx.tree_serialise_leaves(os.path.join(save_path, 'wno_deeponet.eqx'), model)
+
+    np.savez(os.path.join(save_path, 'train_metrics.npz'),
+             train_loss=train_loss_log,
+             test_rel_l2=test_rel_l2_log,
+             test_mae=test_mae_log,
+             test_max=test_max_log)
+
+    sys.stdout = tee.stdout
+    tee.close()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_param_levels', type=int, default=1)
+    parser.add_argument('--num_wavelet_layers', type=int, default=10)
+    parser.add_argument('--suffix', type=str, default='baseline')
+    parser.add_argument('--data_subdir', type=str, default='')
+    args = parser.parse_args()
+    train(args.num_param_levels, args.num_wavelet_layers, args.suffix, args.data_subdir)
